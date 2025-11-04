@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "mindflow-backend"
+version = "0.1.0"
+description = "Backend FastAPI mockado para o projeto MindFlow"
+authors = ["Joice <joice@example.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+fastapi = "^0.115.0"
+uvicorn = "^0.30.0"
+pydantic = "^2.9.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.0"
+httpx = "^0.27.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
