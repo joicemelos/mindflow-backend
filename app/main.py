@@ -1,8 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional, Any
-import json, pathlib, datetime, collections, re
+from typing import List, Optional
+import json, pathlib, datetime, collections, re, random, unicodedata
+
+# =========================
+# CONFIGURAÇÃO BÁSICA
+# =========================
 
 BASE = pathlib.Path(__file__).parent / "data"
 DATA_FILE = BASE / "mock_data.json"
@@ -17,84 +21,216 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# =========================
+# MODELOS E UTILITÁRIOS
+# =========================
+
 class Answer(BaseModel):
     user: Optional[str] = "anonymous"
     q1: Optional[str] = None
     q2: Optional[int] = None
     q3: Optional[str] = None
+    q4: Optional[str] = None
     timestamp: Optional[str] = None
+
 
 def read_data():
     with open(DATA_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
+
 def write_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-@app.get('/health')
+
+# =========================
+# TRATAMENTO DE TEXTO
+# =========================
+
+STOPWORDS = {
+    "a", "o", "e", "de", "do", "da", "que", "em", "para", "com", "como",
+    "no", "na", "os", "as", "um", "uma", "meu", "minha", "seu", "sua",
+    "nos", "nós", "eles", "elas", "você", "vocês", "tudo", "todo",
+    "todos", "ia", "inteligência", "artificial", "mais", "muito", "pouco",
+    "desde", "entre", "sobre", "cada", "mesmo", "faz", "porque", "isso",
+    "essa", "esse", "essa", "também", "já", "ainda", "tem", "pra", "pro"
+}
+
+POSITIVE_WORDS = {
+    "ajuda", "rápido", "eficiente", "melhor", "ótimo", "positivo",
+    "criativo", "facilita", "inteligente", "incrível", "útil",
+    "agilidade", "automatiza", "bom", "excelente", "produtivo"
+}
+
+NEGATIVE_WORDS = {
+    "difícil", "lento", "confuso", "atrapalha", "ruim", "negativo",
+    "cansativo", "demorado", "complicado", "fraco"
+}
+
+
+def normalize_word(word: str) -> str:
+    nfkd = unicodedata.normalize("NFKD", word)
+    return "".join([c for c in nfkd if not unicodedata.combining(c)]).lower()
+
+
+def process_text(texts: List[str]) -> List[str]:
+    full_text = " ".join(texts).lower()
+    words = re.findall(r"\b[a-zà-ú]+\b", full_text)
+    normalized = [normalize_word(w) for w in words]
+    return [w for w in normalized if w not in STOPWORDS and len(w) > 2]
+
+
+def analyze_sentiment(words: List[str]) -> str:
+    positives = sum(w in POSITIVE_WORDS for w in words)
+    negatives = sum(w in NEGATIVE_WORDS for w in words)
+    if positives > negatives:
+        return "positivo"
+    elif negatives > positives:
+        return "negativo"
+    return "neutro"
+
+
+# =========================
+# LÓGICA DE INSIGHTS
+# =========================
+
+def simple_insight_from_answers(answers):
+    texts, scores, frequency = [], [], []
+
+    for ans in answers:
+        if ans.get("q3"):
+            texts.append(ans["q3"].lower())
+        if ans.get("q2"):
+            scores.append(ans["q2"])
+        if ans.get("q1"):
+            frequency.append(str(ans["q1"]).lower())
+
+    all_text = " ".join(texts)
+    words = re.findall(r"\b[a-zà-úÀ-ÚçÇ]+\b", all_text)
+    simplified = [w.lower() for w in words]
+
+    CUSTOM_STOPWORDS = {
+        "a", "o", "e", "de", "da", "do", "em", "no", "na", "que", "para",
+        "por", "com", "um", "uma", "as", "os", "é", "ser", "se", "me",
+        "muito", "mais", "menos", "nas", "nos", "ao", "aos", "à", "às"
+    }
+
+    CONTEXT_STOPWORDS = {
+        "ia", "inteligencia", "artificial", "codigo", "codigos", "testes", "teste", 
+        "desenvolvimento", "elaboracao", "tarefa", "tarefas", "trabalho", "processo",
+        "solucao", "solucoes", "pensar", "automatizar", "utilizar", "ajuda", "ajudar",
+        "uso", "usando", "utilizo", "utiliza", "utilizando"
+    }
+
+    HIGHLIGHT_TOPICS = [
+        "produtividade", "eficiência", "agilidade", "aprendizado", "criatividade",
+        "rapidez", "facilidade", "erro", "bugs", "tempo", "automatização",
+        "precisão", "clareza", "confiança", "inovação"
+    ]
+
+    filtered = [w for w in simplified if w not in CUSTOM_STOPWORDS and w not in CONTEXT_STOPWORDS]
+    count = collections.Counter(filtered)
+    raw_top = [w for w, _ in count.most_common(15)]
+
+    highlighted = [w for w in HIGHLIGHT_TOPICS if w in filtered]
+    top_words = list(dict.fromkeys(highlighted + raw_top))[:8]
+
+    avg_score = sum(scores) / len(scores) if scores else 0
+    freq = collections.Counter(frequency).most_common(1)
+    freq_label = freq[0][0] if freq else "desconhecida"
+
+    freq_map = {
+        "daily": "uso diário",
+        "diariamente": "uso diário",
+        "weekly": "uso semanal",
+        "semanalmente": "uso semanal",
+        "monthly": "uso mensal",
+        "mensalmente": "uso mensal",
+        "raramente": "uso raro",
+        "nunca": "sem uso"
+    }
+
+    freq_text = freq_map.get(freq_label, "uso esporádico")
+    mood = "positiva" if avg_score >= 7 else "neutra" if avg_score >= 4 else "negativa"
+
+    insight_templates = [
+        f"As respostas indicam um {freq_text} das ferramentas de IA, com uma percepção {mood} e utilidade média de {avg_score:.1f}/10.",
+        f"Observa-se um {freq_text}, acompanhado de uma avaliação {mood} e nota média de {avg_score:.1f}/10 sobre o impacto da IA.",
+        f"Os participantes relataram {freq_text}, refletindo uma experiência {mood} e satisfação em torno de {avg_score:.1f}/10.",
+        f"Há um padrão de {freq_text} e avaliação {mood}, sugerindo um impacto geral de {avg_score:.1f}/10 na rotina com IA."
+    ]
+
+    insight = random.choice(insight_templates)
+    if top_words:
+        insight += f" Termos como **{', '.join(top_words[:5])}** refletem os temas mais mencionados."
+
+    return {"insight": insight, "words": [{"word": w, "sentiment": "neutral"} for w in top_words]}
+
+
+# =========================
+# ENDPOINTS
+# =========================
+
+@app.get("/health")
 def health():
     return {"status": "ok"}
 
-@app.get('/curiosity')
+
+@app.get("/curiosity")
 def get_curiosity():
     data = read_data()
     if not data.get("curiosities"):
         raise HTTPException(status_code=404, detail="No curiosities available")
-    # return the first curiosity (or random if you want)
-    return data["curiosities"][0]
+    return random.choice(data["curiosities"])
 
-@app.get('/questions')
+
+@app.get("/questions")
 def get_questions():
     data = read_data()
-    return data.get("questions", [])
+    return {"questions": data.get("questions", [])}
 
-@app.post('/answers')
+
+# ===========================================
+# ENDPOINT COM VALIDAÇÃO DE ENTRADAS
+# ===========================================
+@app.post("/answers")
 def post_answers(answer: Answer):
     data = read_data()
     if "answers" not in data:
         data["answers"] = []
+
     payload = answer.dict()
+
+    if not any([payload.get("q1"), payload.get("q2"), payload.get("q3"), payload.get("q4")]):
+        raise HTTPException(status_code=400, detail="Resposta inválida ou incompleta.")
+
     if not payload.get("timestamp"):
         payload["timestamp"] = datetime.datetime.utcnow().isoformat() + "Z"
+
     data["answers"].append(payload)
     write_data(data)
     return {"ok": True, "saved": payload}
 
-def simple_insight_from_answers(answers: List[dict]) -> str:
-    # Aggregate q1 (most common tool), q2 average, top words from q3
-    if not answers:
-        return "Ainda não há respostas suficientes para gerar um insight. Seja o primeiro!"
-    tools = [a.get("q1") for a in answers if a.get("q1")]
-    ratings = [a.get("q2") for a in answers if isinstance(a.get("q2"), (int, float))]
-    texts = " ".join([a.get("q3","") or "" for a in answers])
-    most_common_tool = None
-    if tools:
-        most_common_tool = collections.Counter(tools).most_common(1)[0][0]
-    avg_rating = round(sum(ratings)/len(ratings), 1) if ratings else None
-    # top words:
-    words = re.findall(r"\w{3,}", texts.lower())
-    stop = set(['com','para','que','e','a','o','de','no','na','do','da','em','se','o','a','as','os'])
-    filtered = [w for w in words if w not in stop]
-    top_words = [w for w,_ in collections.Counter(filtered).most_common(6)]
-    parts = []
-    if most_common_tool:
-        parts.append(f"Ferramenta mais citada: {most_common_tool}.")
-    if avg_rating is not None:
-        parts.append(f"Nota média de utilidade: {avg_rating}/10.")
-    if top_words:
-        parts.append("Termos frequentes: " + ", ".join(top_words) + ".")
-    return " ".join(parts)
 
-@app.get('/insight')
+@app.get("/insight")
 def get_insight():
     data = read_data()
-    insight = simple_insight_from_answers(data.get("answers", []))
-    return {"insight": insight, "count_answers": len(data.get("answers", []))}
+    result = simple_insight_from_answers(data.get("answers", []))
+    return result
 
-# Placeholder for future OpenAI integration
-@app.get('/insight-ai')
+
+@app.get("/insight-ai")
 def get_insight_ai():
-    return {
-        "note": "Endpoint placeholder - integrate with OpenAI or another LLM to generate richer insights."
-    }
+    return {"note": "Endpoint placeholder - integrate with OpenAI or another LLM to generate richer insights."}
+
+
+# ===========================================
+# NOVO ENDPOINT: LIMPAR TODAS AS RESPOSTAS
+# ===========================================
+@app.delete("/reset")
+def reset_answers():
+    data = read_data()
+    data["answers"] = []
+    write_data(data)
+    return {"ok": True, "message": "Todas as respostas foram removidas com sucesso."}
