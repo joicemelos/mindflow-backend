@@ -1,37 +1,61 @@
 # MindFlow Backend (FastAPI + Poetry)
 
-This is a scaffold backend for the **MindFlow** prototype. It uses **FastAPI** and a small mock JSON store to simulate persistence and simple AI-driven insight generation.
+Um backend simples e modular desenvolvido para o protótipo MindFlow, que coleta respostas, gera pequenos insights e armazena dados simulados via JSON mock.
 
-## What is included
-- `pyproject.toml` (Poetry config)
-- `app/main.py` (FastAPI application with endpoints)
-- `app/data/mock_data.json` (mock data for curiosities, questions and answers)
-- `Dockerfile` (simple containerization)
-- `run.sh` (quick start script)
-- `README.md` (this file)
+## Visão geral
+O backend do MindFlow utiliza FastAPI e Poetry para oferecer uma API simples, organizada e ideal para prototipagem rápida.
+Ele simula persistência local e geração de insights automáticos, servindo como base para o front-end desenvolvido em React.
 
-## Quick start (no Poetry)
-If you don't have Poetry installed, you can run with plain pip inside a virtualenv:
+## Estrutura do Projeto
+mindflow-backend/
+│
+├── app/
+│   ├── main.py              # Aplicação principal FastAPI
+│   └── data/
+│       └── mock_data.json   # Armazena curiosidades, perguntas e respostas mockadas
+│
+├── pyproject.toml           # Configuração do Poetry
+├── Dockerfile               # Containerização simples
+├── run.sh                   # Script rápido de inicialização
+└── README.md                # Este arquivo
 
+## Configuração Rápida
+* Opção 1 — Usando Poetry (recomendado)
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install fastapi uvicorn
-uvicorn app.main:app --reload --port 8000
+    poetry install
+    poetry run uvicorn app.main:app --reload --port 8000
 ```
 
-## With Poetry (recommended)
+* Opção 2 — Sem Poetry (usando pip)
 ```bash
-poetry install
-poetry run uvicorn app.main:app --reload --port 8000
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install fastapi uvicorn
+    uvicorn app.main:app --reload --port 8000
 ```
 
-## Endpoints
-- `GET /curiosity` — returns a random curiosity (or the first, from mock)
-- `GET /questions` — returns the survey questions
-- `POST /answers` — accepts an answer JSON and saves it to mock_data.json
-- `GET /insight` — generates a simple aggregated insight from saved answers
-- `GET /health` — health check
+A API estará disponível em: 
+    ```http://localhost:8000/```
 
-## Notes
-This scaffold uses a simple file-based mock. In production, replace with a database (Postgres) and connect to a real AI service (OpenAI) for richer insights.
+
+## Endpoints Disponíveis
+|  Método  | Rota         | Descrição                                             |
+| :------: | :----------- | :---------------------------------------------------- |
+|  **GET** | `/curiosity` | Retorna uma curiosidade aleatória do mock             |
+|  **GET** | `/questions` | Lista as perguntas do questionário                    |
+| **POST** | `/answers`   | Recebe respostas em JSON e salva no mock              |
+|  **GET** | `/insight`   | Gera um insight simples com base nas respostas salvas |
+|  **GET** | `/health`    | Health check (verifica se a API está ativa)           |
+| **POST** | `/reset`     | Limpa as respostas do mock (para testes)              |
+
+
+## Notas
+As respostas enviadas via /answers são armazenadas no mock_data.json.
+O endpoint /insight realiza uma análise simples (palavras-chave + média de pontuação) e retorna uma frase automática.
+Esse comportamento pode ser substituído futuramente por um modelo de IA real.
+
+## Próximos passos
+- Substituir mock JSON por banco de dados real (ex: PostgreSQL).
+- Integrar com serviços de IA para insights mais profundos.
+ - Adicionar autenticação e controle de usuários.
+- Criar testes automatizados (pytest).
