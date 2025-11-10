@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import json, pathlib, datetime, collections, re, random, unicodedata
+import feedparser
 
 # =========================
 # CONFIGURAÇÃO BÁSICA
@@ -179,6 +180,28 @@ def health():
 
 @app.get("/curiosity")
 def get_curiosity():
+    """
+    Retorna uma curiosidade real sobre Inteligência Artificial
+    (via Google News RSS). Se falhar, usa dados locais (mock).
+    """
+    try:
+        feed = feedparser.parse(
+            "https://news.google.com/rss/search?q=inteligencia+artificial&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+        )
+        if feed.entries:
+            entry = random.choice(feed.entries[:5])  # escolhe uma entre as 5 primeiras
+            curiosity_text = f"{entry.title}. Leia mais: {entry.link}"
+            return {"text": curiosity_text}
+    except Exception as e:
+        print(f"[Curiosity RSS Error] {e}")
+
+    # fallback para mock local
+    data = read_data()
+    curiosities = data.get("curiosities", [])
+    if not curiosities:
+        raise HTTPException(status_code=404, detail="Nenhuma curiosidade disponível.")
+    return random.choice(curiosities)
+
     data = read_data()
     if not data.get("curiosities"):
         raise HTTPException(status_code=404, detail="No curiosities available")
