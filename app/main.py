@@ -4,6 +4,13 @@ from pydantic import BaseModel
 from typing import List, Optional
 import json, pathlib, datetime, collections, re, random, unicodedata
 import feedparser
+from sqlalchemy.orm import Session
+from . import models
+from .database import engine, get_db
+from fastapi import Depends
+
+models.Base.metadata.create_all(bind=engine)
+
 
 # =========================
 # CONFIGURAÇÃO BÁSICA
@@ -218,7 +225,29 @@ def get_questions():
 # ENDPOINT COM VALIDAÇÃO DE ENTRADAS
 # ===========================================
 @app.post("/answers")
-def post_answers(answer: Answer):
+def post_answers(answer: Answer, db: Session = Depends(get_db)):
+    if not any([answer.q1, answer.q2, answer.q3, answer.q4]):
+        raise HTTPException(status_code=400, detail="Resposta inválida ou incompleta.")
+
+    db_answer = models.Answer(
+        user=answer.user or "anonymous",
+        q1=answer.q1,
+        q2=answer.q2,
+        q3=answer.q3,
+        q4=answer.q4
+    )
+    db.add(db_answer)
+    db.commit()
+    db.refresh(db_answer)
+
+    return {"ok": True, "saved": {
+        "user": db_answer.user,
+        "q1": db_answer.q1,
+        "q2": db_answer.q2,
+        "q3": db_answer.q3,
+        "q4": db_answer.q4,
+        "timestamp": str(db_answer.timestamp)
+    }}
     data = read_data()
     if "answers" not in data:
         data["answers"] = []
@@ -237,9 +266,13 @@ def post_answers(answer: Answer):
 
 
 @app.get("/insight")
-def get_insight():
-    data = read_data()
-    result = simple_insight_from_answers(data.get("answers", []))
+def get_insight(db: Session = Depends(get_db)):
+    answers = db.query(models.Answer).all()
+    formatted = [
+        {"q1": a.q1, "q2": a.q2, "q3": a.q3, "q4": a.q4, "user": a.user}
+        for a in answers
+    ]
+    result = simple_insight_from_answers(formatted)
     return result
 
 

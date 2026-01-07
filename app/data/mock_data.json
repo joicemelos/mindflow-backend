@@ -6,20 +6,28 @@
     },
     {
       "id": 2,
-      "text": "Dica: experimente prompts curtos e claros para obter respostas mais acionáveis da IA."
+      "text": "Estudo da McKinsey mostra que IA generativa pode aumentar o PIB global em até 7% nos próximos 10 anos."
+    },
+    {
+      "id": 3,
+      "text": "Ferramentas como ChatGPT e Copilot estão sendo usadas para economizar até 30% do tempo de desenvolvimento."
+    },
+    {
+      "id": 4,
+      "text": "O Google anunciou novas integrações de IA no Workspace, trazendo resumos automáticos de reuniões e e-mails."
     }
   ],
   "questions": [
     {
       "id": "q1",
       "type": "choice",
-      "text": "Qual ferramenta de IA você mais usou esta semana?",
+      "text": " Com que frequência você utiliza ferramentas de IA no trabalho?",
       "options": [
-        "ChatGPT",
-        "Copilot",
-        "Bard",
-        "Outra",
-        "Nenhuma"
+        "Diariamente",
+        "Semanalmente",
+        "Mensalmente",
+        "Raramente",
+        "Nunca"
       ]
     },
     {
@@ -33,7 +41,29 @@
       "id": "q3",
       "type": "text",
       "text": "Conte em poucas palavras uma facilidade ou dificuldade que teve com IA."
+    },
+    {
+      "id": "q4",
+      "type": "choice",
+      "text": "Qual ferramenta de IA você mais usou esta semana?",
+      "options": [
+        "ChatGPT",
+        "Copilot",
+        "Flow",
+        "Gemini",
+        "Outra",
+        "Nenhuma"
+      ]
     }
   ],
-  "answers": []
+  "answers": [
+    {
+      "user": "anonymous",
+      "q1": "Diariamente",
+      "q2": 9,
+      "q3": "A IA tem ajudado bastante no desenvolvimento de código, testes, descrição de ticketes no jira. Mas as alucinações geram bugs difíceis de serem consertados.",
+      "q4": "Flow",
+      "timestamp": "2025-11-10T14:15:25.927762Z"
+    }
+  ]
 }
